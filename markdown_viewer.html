@@ -1,0 +1,681 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Markdown file viewer with PDF export">
+    <title>Markdown Viewer</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --primary-dark: #2980b9;
+            --secondary: #2c3e50;
+            --danger: #e74c3c;
+            --success: #27ae60;
+            --success-dark: #219150;
+            --bg-primary: #ffffff;
+            --bg-secondary: #f5f7fa;
+            --text-primary: #2c3e50;
+            --text-secondary: #4a5568;
+            --border: #e2e8f0;
+            --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.08);
+            --shadow-md: 0 4px 8px rgba(0, 0, 0, 0.12);
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-secondary);
+            min-height: 100vh;
+            padding: 20px;
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: var(--bg-primary);
+            border-radius: 8px;
+            box-shadow: var(--shadow-md);
+            overflow: hidden;
+            min-height: 80vh;
+        }
+
+        .header {
+            background: var(--secondary);
+            color: white;
+            padding: 32px 40px;
+            text-align: center;
+            border-bottom: 4px solid var(--primary);
+        }
+
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 8px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .header p {
+            opacity: 0.92;
+            font-size: 1.05em;
+            font-weight: 400;
+        }
+
+        .upload-area {
+            padding: 60px 40px;
+            text-align: center;
+            border: 2px dashed #cbd5e0;
+            margin: 40px;
+            border-radius: 8px;
+            background: #f8fafc;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+
+        .upload-area.dragover {
+            background: #ebf5ff;
+            border-color: var(--primary);
+            transform: translateY(-2px);
+        }
+
+        .upload-area.hidden {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 3.5em;
+            margin-bottom: 20px;
+            color: var(--primary);
+        }
+
+        .upload-text {
+            font-size: 1.15em;
+            color: var(--text-primary);
+            margin-bottom: 12px;
+            font-weight: 500;
+        }
+
+        .upload-hint {
+            color: #718096;
+            font-size: 0.95em;
+            margin-bottom: 20px;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 12px 32px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 4px rgba(52, 152, 219, 0.2);
+        }
+
+        .btn:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 8px rgba(52, 152, 219, 0.3);
+        }
+
+        .btn:active {
+            transform: translateY(0);
+        }
+
+        .content {
+            padding: 40px 50px;
+            display: none;
+            line-height: 1.8;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .content.visible {
+            display: block;
+        }
+
+        .content h1 {
+            color: #1a202c;
+            font-size: 2em;
+            font-weight: 700;
+            margin-bottom: 20px;
+            padding-bottom: 12px;
+            border-bottom: 3px solid var(--primary);
+            letter-spacing: -0.5px;
+        }
+
+        .content h2 {
+            color: var(--text-primary);
+            font-size: 1.6em;
+            font-weight: 600;
+            margin-top: 32px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .content h3 {
+            color: #34495e;
+            font-size: 1.3em;
+            font-weight: 600;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        .content h4 {
+            color: var(--text-secondary);
+            font-size: 1.1em;
+            font-weight: 600;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+
+        .content h5,
+        .content h6 {
+            color: var(--text-secondary);
+            font-weight: 600;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+
+        .content p {
+            color: var(--text-secondary);
+            margin-bottom: 14px;
+            font-size: 1.02em;
+        }
+
+        .content ul,
+        .content ol {
+            margin-left: 30px;
+            margin-bottom: 16px;
+        }
+
+        .content li {
+            margin-bottom: 8px;
+            color: var(--text-secondary);
+        }
+
+        .content strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .content em {
+            color: #34495e;
+        }
+
+        .content table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+            border-radius: 6px;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .content thead {
+            background: var(--secondary);
+            color: white;
+        }
+
+        .content th {
+            padding: 12px 16px;
+            text-align: left;
+            font-weight: 600;
+            font-size: 0.95em;
+            letter-spacing: 0.3px;
+        }
+
+        .content td {
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text-secondary);
+            vertical-align: top;
+        }
+
+        .content tbody tr {
+            background: white;
+            transition: background-color 0.15s ease;
+        }
+
+        .content tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .content tbody tr:last-child td {
+            border-bottom: none;
+        }
+
+        .content a {
+            color: var(--primary);
+            text-decoration: none;
+            font-weight: 500;
+            word-break: break-word;
+        }
+
+        .content a:hover {
+            text-decoration: underline;
+        }
+
+        .content code {
+            background: #f1f5f9;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+            color: var(--danger);
+            font-size: 0.9em;
+            border: 1px solid var(--border);
+        }
+
+        .content pre {
+            background: #1e293b;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 20px 0;
+            border: 1px solid #334155;
+            line-height: 1.5;
+        }
+
+        .content pre code {
+            background: transparent;
+            color: #e2e8f0;
+            padding: 0;
+            border: none;
+            font-size: 0.88em;
+        }
+
+        .content blockquote {
+            border-left: 4px solid var(--primary);
+            padding: 14px 18px;
+            margin: 20px 0;
+            color: #718096;
+            font-style: italic;
+            background: #f7fafc;
+            border-radius: 0 4px 4px 0;
+        }
+
+        .content hr {
+            border: none;
+            border-top: 2px solid var(--border);
+            margin: 32px 0;
+        }
+
+        .content img {
+            max-width: 100%;
+            height: auto;
+            border-radius: 6px;
+            margin: 16px 0;
+            box-shadow: var(--shadow-sm);
+            display: block;
+        }
+
+        .action-buttons {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            display: none;
+            gap: 12px;
+            z-index: 1000;
+        }
+
+        .action-buttons.visible {
+            display: flex;
+        }
+
+        .action-btn {
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.95em;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .action-btn:active {
+            transform: translateY(0);
+        }
+
+        .action-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .reset-btn {
+            background: var(--danger);
+            color: white;
+        }
+
+        .reset-btn:hover:not(:disabled) {
+            background: #c0392b;
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(231, 76, 60, 0.4);
+        }
+
+        .pdf-btn {
+            background: var(--success);
+            color: white;
+        }
+
+        .pdf-btn:hover:not(:disabled) {
+            background: var(--success-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 10px rgba(39, 174, 96, 0.4);
+        }
+
+        .file-name {
+            background: #ebf5ff;
+            padding: 14px 24px;
+            margin: 0 40px;
+            color: var(--text-primary);
+            font-weight: 500;
+            display: none;
+            border-left: 4px solid var(--primary);
+            font-size: 0.95em;
+        }
+
+        .file-name.visible {
+            display: block;
+        }
+
+        #pdfContainer {
+            position: absolute;
+            left: -9999px;
+            top: -9999px;
+            width: 210mm;
+            background: white;
+            padding: 20mm;
+            color: black;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                padding: 0;
+            }
+
+            .container {
+                border-radius: 0;
+            }
+
+            .header {
+                padding: 24px 20px;
+            }
+
+            .header h1 {
+                font-size: 1.5em;
+            }
+
+            .upload-area {
+                margin: 20px;
+                padding: 40px 20px;
+            }
+
+            .content {
+                padding: 24px 20px;
+            }
+
+            .content h1 {
+                font-size: 1.6em;
+            }
+
+            .content h2 {
+                font-size: 1.3em;
+            }
+
+            .content table {
+                font-size: 0.85em;
+            }
+
+            .content th,
+            .content td {
+                padding: 8px 10px;
+            }
+
+            .file-name {
+                margin: 0 20px;
+            }
+
+            .action-buttons {
+                top: 12px;
+                right: 12px;
+                flex-direction: column;
+                gap: 8px;
+            }
+
+            .action-btn {
+                padding: 10px 18px;
+                font-size: 0.88em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>📄 Markdown Viewer</h1>
+            <p>View and export markdown files to PDF</p>
+        </div>
+
+        <div class="file-name" id="fileName"></div>
+
+        <div class="upload-area" id="uploadArea">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Drop your markdown file here</div>
+            <div class="upload-hint">or</div>
+            <button class="btn" onclick="document.getElementById('fileInput').click()">Choose File</button>
+            <input type="file" id="fileInput" class="file-input" accept=".md,.markdown" aria-label="Upload markdown file">
+        </div>
+
+        <div class="content" id="content" role="main"></div>
+    </div>
+
+    <div id="pdfContainer"></div>
+
+    <div class="action-buttons" id="actionButtons">
+        <button class="action-btn pdf-btn" id="pdfBtn" aria-label="Download as PDF">
+            <span>⬇️</span> Download PDF
+        </button>
+        <button class="action-btn reset-btn" id="resetBtn" aria-label="Upload another file">
+            <span>↺</span> New File
+        </button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+    <script>
+        const elements = {
+            uploadArea: document.getElementById('uploadArea'),
+            fileInput: document.getElementById('fileInput'),
+            content: document.getElementById('content'),
+            actionButtons: document.getElementById('actionButtons'),
+            resetBtn: document.getElementById('resetBtn'),
+            pdfBtn: document.getElementById('pdfBtn'),
+            fileNameDisplay: document.getElementById('fileName'),
+            pdfContainer: document.getElementById('pdfContainer')
+        };
+
+        let currentFileName = 'document';
+
+        const dragEvents = ['dragenter', 'dragover', 'dragleave', 'drop'];
+        dragEvents.forEach(eventName => {
+            elements.uploadArea.addEventListener(eventName, preventDefaults, false);
+            document.body.addEventListener(eventName, preventDefaults, false);
+        });
+
+        function preventDefaults(e) {
+            e.preventDefault();
+            e.stopPropagation();
+        }
+
+        ['dragenter', 'dragover'].forEach(eventName => {
+            elements.uploadArea.addEventListener(eventName, () => {
+                elements.uploadArea.classList.add('dragover');
+            });
+        });
+
+        ['dragleave', 'drop'].forEach(eventName => {
+            elements.uploadArea.addEventListener(eventName, () => {
+                elements.uploadArea.classList.remove('dragover');
+            });
+        });
+
+        elements.uploadArea.addEventListener('drop', (e) => {
+            handleFiles(e.dataTransfer.files);
+        });
+
+        elements.fileInput.addEventListener('change', (e) => {
+            handleFiles(e.target.files);
+        });
+
+        elements.uploadArea.addEventListener('click', (e) => {
+            if (!e.target.closest('.btn')) {
+                elements.fileInput.click();
+            }
+        });
+
+        function handleFiles(files) {
+            if (files.length === 0) return;
+
+            const file = files[0];
+
+            if (!file.name.match(/\.(md|markdown)$/i)) {
+                alert('Please upload a Markdown (.md) file');
+                return;
+            }
+
+            currentFileName = file.name.replace(/\.[^/.]+$/, '');
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                renderMarkdown(e.target.result, file.name);
+            };
+            reader.onerror = () => {
+                alert('Error reading file');
+            };
+            reader.readAsText(file);
+        }
+
+        function renderMarkdown(markdownText, name) {
+            marked.setOptions({
+                breaks: true,
+                gfm: true,
+                headerIds: true,
+                mangle: false
+            });
+
+            const html = marked.parse(markdownText);
+
+            elements.content.innerHTML = html;
+            elements.content.classList.add('visible');
+            elements.uploadArea.classList.add('hidden');
+            elements.actionButtons.classList.add('visible');
+            elements.fileNameDisplay.textContent = `📄 ${name}`;
+            elements.fileNameDisplay.classList.add('visible');
+
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        elements.resetBtn.addEventListener('click', () => {
+            elements.content.innerHTML = '';
+            elements.content.classList.remove('visible');
+            elements.uploadArea.classList.remove('hidden');
+            elements.actionButtons.classList.remove('visible');
+            elements.fileInput.value = '';
+            elements.fileNameDisplay.classList.remove('visible');
+            elements.fileNameDisplay.textContent = '';
+        });
+
+        elements.pdfBtn.addEventListener('click', generatePDF);
+
+        function generatePDF() {
+            const originalText = elements.pdfBtn.innerHTML;
+            elements.pdfBtn.innerHTML = '<span>⏳</span> Generating...';
+            elements.pdfBtn.disabled = true;
+
+            try {
+                const contentClone = elements.content.cloneNode(true);
+                contentClone.classList.add('visible');
+                
+                elements.pdfContainer.innerHTML = '';
+                elements.pdfContainer.appendChild(contentClone);
+
+                setTimeout(() => {
+                    const pdfElement = elements.pdfContainer.querySelector('.content');
+                    
+                    if (!pdfElement) {
+                        throw new Error('PDF element not found');
+                    }
+
+                    const opt = {
+                        margin: 10,
+                        filename: `${currentFileName}.pdf`,
+                        image: { 
+                            type: 'jpeg', 
+                            quality: 0.98 
+                        },
+                        html2canvas: {
+                            scale: 2,
+                            useCORS: true,
+                            logging: false,
+                            allowTaint: true,
+                            backgroundColor: '#ffffff'
+                        },
+                        jsPDF: {
+                            unit: 'mm',
+                            format: 'a4',
+                            orientation: 'portrait',
+                            compress: true
+                        },
+                        pagebreak: { 
+                            mode: ['css', 'legacy']
+                        }
+                    };
+
+                    html2pdf()
+                        .set(opt)
+                        .from(pdfElement)
+                        .save()
+                        .then(() => {
+                            elements.pdfBtn.innerHTML = originalText;
+                            elements.pdfBtn.disabled = false;
+                            elements.pdfContainer.innerHTML = '';
+                        })
+                        .catch((error) => {
+                            console.error('PDF Error:', error);
+                            alert('PDF generation failed. Please try again.');
+                            elements.pdfBtn.innerHTML = originalText;
+                            elements.pdfBtn.disabled = false;
+                            elements.pdfContainer.innerHTML = '';
+                        });
+                }, 500);
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('PDF generation failed');
+                elements.pdfBtn.innerHTML = originalText;
+                elements.pdfBtn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
